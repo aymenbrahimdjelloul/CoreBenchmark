@@ -25,7 +25,7 @@ from cpuinfo import CPU
 
 # DEFINE BASIC VARIABLES
 AUTHOR: str = "Aymen Brahim Djelloul"
-VERSION: float = 1.1
+VERSION: float = 1.2
 PI_PRECISION: int = 10000
 CONSOLE_CLEAR_WIN32: str = "cls"
 CONSOLE_CLEAR_LINUX: str = "clear"
