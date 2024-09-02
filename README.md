@@ -32,7 +32,7 @@
 | CPU  | Score|
 |------|--------|
 | AMD Ryzen 3 3200G | 940 |
-| Intel Core i7-7600U 2.80 GHz |  |
+| Intel Core i7-7600U 2.80 GHz | 800 |
 | Intel Core i5-7Y54 1.20 Ghz | 600 |
 
 Simple Usage
