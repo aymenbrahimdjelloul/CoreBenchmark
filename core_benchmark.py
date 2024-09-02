@@ -18,9 +18,10 @@ import sys
 from decimal import Decimal, getcontext
 from math import ceil
 from concurrent.futures import ProcessPoolExecutor, as_completed
-from multiprocessing import Process, ProcessError, cpu_count, Queue
+from multiprocessing import Process, ProcessError, Queue
 from time import perf_counter, sleep
 from os import system
+from cpuinfo import CPU
 
 # DEFINE BASIC VARIABLES
 AUTHOR: str = "Aymen Brahim Djelloul"
@@ -28,6 +29,9 @@ VERSION: float = 1.1
 PI_PRECISION: int = 10000
 CONSOLE_CLEAR_WIN32: str = "cls"
 CONSOLE_CLEAR_LINUX: str = "clear"
+
+# Create CPU object
+cpu = CPU()
 
 
 def is_executable():
@@ -60,7 +64,7 @@ class CoreBenchmark:
 
     def __init__(self) -> None:
         # Define variables
-        self.cpu_cores: int = cpu_count()
+        self.cpu_cores: int = cpu.get_core_count()
 
     def benchmark(self, score_result: bool = True) -> float:
         """
@@ -163,11 +167,15 @@ class CoreBenchmark:
 
 def main():
 
-    # Print CoreBenchmark banner
-    print(f"\n  CoreBenchmark {VERSION}v   |   Developed by {AUTHOR}\n Multi-core Benchmark running Please wait..\n")
-
     # Create CoreBenchmark object
     bench = CoreBenchmark()
+
+    # Print CoreBenchmark banner
+    print(
+        f"\n       CoreBenchmark {VERSION}v   |   Developed by {AUTHOR}\n\n"
+        f"     Multi-core Benchmark running on [ {cpu.get_cpu_name()} ]\n"
+        "      Please wait...\n"
+    )
 
     try:
         # Check if CoreBenchmark running on windows on executable file '.exe'
@@ -177,23 +185,23 @@ def main():
             set_title()
 
             # Print out Note that the results on the executable version may not be accurate
-            print(f"\n NOTE: Results may not be accurate with the executable version.\n"
-                  f" look : https://github.com/aymenbrahimdjelloul/CoreBenchmark")
+            print(f"\n     NOTE: Results may not be accurate with the executable version.\n"
+                  f"     look : https://github.com/aymenbrahimdjelloul/CoreBenchmark")
 
             # Run benchmark process
             bench_score: int = bench.benchmark()
             # Print out the results multiplied by the cores number
-            print(f"\n\n Benchmark score : {bench_score * bench.cpu_cores} points\n")
+            print(f"\n\n     Benchmark score : {bench_score * bench.cpu_cores} points\n")
 
         else:
 
             # Run the normal multicore benchmark
             bench_score: int = bench.benchmark_all_cores()
-            print(f"\n Benchmark score : {bench_score} points\n")
+            print(f"\n     Benchmark score : {bench_score} points\n")
 
     # Handle exceptions
     except Exception as e:
-        print(e)
+        print(f"    {e}")
 
     # Wait user input to retry or exit
     i: int = input("\nENTER [1] For retry .. [2] For exit\n>>: ")
@@ -209,7 +217,7 @@ def main():
             sys.exit()
 
         case _:
-            print(f"CoreBenchmark Exiting right now ..")
+            print(f"    CoreBenchmark Exiting right now ..")
             sleep(2)
             sys.exit()
 
