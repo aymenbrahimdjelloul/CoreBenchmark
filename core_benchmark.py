@@ -5,48 +5,62 @@ date : 01.09.2024
 License : MIT
 
 
+    CoreBenchmark is a streamlined and efficient tool designed to benchmark computational
+    performance by calculating π (pi) to an accuracy of 10,000 decimal places. With its
+    straightforward approach, CoreBenchmark provides an accurate measure of your system's
+    processing power and precision capabilities. Ideal for performance testing and optimization, this tool
+    leverages advanced algorithms to deliver reliable and comprehensive benchmarks.
 
 """
 
 # IMPORTS
 import sys
-from time import perf_counter
-from math import ceil
 from decimal import Decimal, getcontext
-from multiprocessing import cpu_count
+from math import ceil
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from multiprocessing import cpu_count
+from time import perf_counter
 
 # DEFINE BASIC VARIABLES
-AUTHOR: str = "Aymen Brahim Djellou"
+AUTHOR: str = "Aymen Brahim Djelloul"
 VERSION: float = 1.0
 PI_PRECISION: int = 10000
 
 
 class CoreBenchmark:
+    """
+    CoreBenchmark is the main class to perform CPU computation performance tests.
+
+    Methods
+    -------
+    benchmark() -> float
+        This method runs a single-core benchmark.
+
+    benchmark_all_cores() -> float
+        This method runs a benchmark for all CPU cores in parallel.
+    """
 
     def __init__(self) -> None:
         # Define variables
         self.cpu_cores: int = cpu_count()
+        self.pi_precision: int = PI_PRECISION
 
     def benchmark(self, score_result: bool = True) -> float:
         """
-        Benchmark method that calls the calculating pi method
-        
+        Benchmark method that calls the calculating pi method.
+
         Args:
-        - friendly_format: Boolean argument to return the right type of data
-        
+        - score_result (bool): Return benchmark score if True, otherwise return raw time.
+
         Returns:
-        - Float representing the benchmark time result
+        - float: The benchmark score or time result.
         """
         # Get the start time
         s_time: float = perf_counter()
         # Calculate Pi number
-        pi: Decimal = self._calculate_pi()
+        self._calculate_pi(self.pi_precision)
         # Get the benchmark time
         t_time: float = perf_counter() - s_time
-
-        # Clear memory
-        del pi, s_time
 
         # Return benchmark result
         return self._calculate_score(t_time) if score_result else t_time
@@ -54,15 +68,15 @@ class CoreBenchmark:
     def benchmark_all_cores(self, score_result: bool = True) -> float:
         """
         Calculate π in parallel using multiple cores.
-        
+
         Args:
-        - friendly_format: Boolean argument to return the right type of data
+        - score_result (bool): Return benchmark score if True, otherwise return raw time.
 
         Returns:
-        - Time taken to calculate π
+        - float: Time taken to calculate π or the score result.
         """
-        chunk_size: int = PI_PRECISION // self.cpu_cores
-        futures: list = []
+        chunk_size: int = self.pi_precision // self.cpu_cores
+        futures = []
         results = [Decimal(0) for _ in range(self.cpu_cores)]
 
         s_time: float = perf_counter()
@@ -71,73 +85,68 @@ class CoreBenchmark:
             for i in range(self.cpu_cores):
                 start: int = i * chunk_size
                 end: int = start + chunk_size
-                if i == self.cpu_cores - 1:  # Last chunk might need to handle the remainder
-                    end = PI_PRECISION
-                futures.append(executor.submit(self._calculate_pi, start, end))
-            
+                if i == self.cpu_cores - 1:  # Handle remainder in the last chunk
+                    end = self.pi_precision
+                futures.append(executor.submit(self._calculate_pi, end, start))
+
             for i, future in enumerate(as_completed(futures)):
                 results[i] = future.result()
 
-        # Combine results - for Chudnovsky, accurate combination would require specific techniques
-        pi: float = sum(results) / len(results)
-        # Get the taken time
+        # Combine results (for Chudnovsky, specific combination may be needed)
+        pi: Decimal = sum(results)
         t_time: float = perf_counter() - s_time
 
-        # Clear memory
-        del (chunk_size, futures,
-              results, s_time, start, end, i, [pi])
-
-        # Return the benchmark result
         return self._calculate_score(t_time) if score_result else t_time
-    
-    def _calculate_pi(self, start: int = 0, end: int = PI_PRECISION) -> Decimal:
+
+    def _calculate_pi(self, end: int, start: int = 0) -> Decimal:
         """
         Calculate a chunk of π using the Chudnovsky algorithm.
-        
+
         Args:
-        - start: The starting index for the chunk.
-        - end: The ending index for the chunk.
+        - start (int): The starting index for the chunk.
+        - end (int): The ending index for the chunk.
 
         Returns:
-        - A Decimal object representing π for the chunk.
+        - Decimal: The calculated value of π for the chunk.
         """
-        getcontext().prec = PI_PRECISION + 2  # Set precision
+        getcontext().prec = self.pi_precision + 2  # Set precision
 
-        C = Decimal(426880) * Decimal(10005).sqrt()
-        K = Decimal(6 + 12 * start)
-        M = Decimal(1)
-        X = Decimal(1)
-        L = Decimal(13591409 + 545140134 * start)
-        S = L
+        c = Decimal(426880) * Decimal(10005).sqrt()
+        k = Decimal(6 + 12 * start)
+        m = Decimal(1)
+        x = Decimal(1)
+        l = Decimal(13591409 + 545140134 * start)
+        s = l
 
         for i in range(start + 1, end):
-            M *= (K**3 - 16*K) / (i**3)
-            L += Decimal(545140134)
-            X *= -262537412640768000
-            S += Decimal(M * L) / X
-            K += 12
+            m *= (k ** 3 - 16 * k) / (i ** 3)
+            l += Decimal(545140134)
+            x *= -262537412640768000
+            s += Decimal(m * l) / x
+            k += 12
 
-        # Return the pi number
-        return C / S
+        # Return the pi number for the chunk
+        return c / s
 
-
-    def _calculate_score(self, time_taken: float, scale: float = 10000.0, offset: float = 1.0) -> float:
+    @staticmethod
+    def _calculate_score(time_taken: float, scale: float = 10000.0, offset: float = 1.0) -> float:
         """
-        Calculate a score based on the given duration in seconds.
-        Lower durations result in higher scores, with customizable scaling and offset.
+        Calculate a score based on the given time duration.
 
         Args:
-            duration (float): The duration in seconds to calculate the score from.
-            scale (float): A scaling factor to adjust the score range. Default is 100.
-            offset (float): An offset to adjust the score range. Default is 1.
+        - time_taken (float): The time taken for the benchmark in seconds.
+        - scale (float): A scaling factor to adjust the score range.
+        - offset (float): An offset to avoid division by zero.
 
         Returns:
-            float: The calculated score.
+        - float: The calculated score.
         """
-        
-        # Custom scoring formula
         return ceil(scale / (time_taken + offset))  # Adding offset to avoid division by zero
-        
+
 
 if __name__ == "__main__":
-    sys.exit()
+
+    # Create CoreBenchmark object
+    bench = CoreBenchmark()
+    print(f"CoreBenchmark {VERSION}v   |   Developed by : {AUTHOR}\n Benchmark running Please wait..")
+    print(f" Benchmark result : {bench.benchmark_all_cores()} points")
