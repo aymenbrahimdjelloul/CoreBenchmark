@@ -35,16 +35,32 @@
 | Intel Core i7-7600U 2.80 GHz | 800 |
 | Intel Core i5-7Y54 1.20 Ghz | 600 |
 
-Simple Usage
+Single core benchmark
 -----
 ~~~python
+from core_benchmark import CoreBenchmark
+
+# Create CoreBenchmark object
+bench = CoreBenchmark()
+
+# Print the current cpu score
+# on single core benchmark
+print(bench.benchmark())
 
 
 ~~~
 
-Sensors Usage
+Multi-core benchmark
 -----
 ~~~python
+from core_benchmark import CoreBenchmark
+
+# Create CoreBenchmark object
+bench = CoreBenchmark()
+
+# Print the current cpu score
+# on Multi-core benchmark
+print(bench.benchmark_all_cores())
 
 ~~~
 
