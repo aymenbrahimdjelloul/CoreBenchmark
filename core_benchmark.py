@@ -1,6 +1,6 @@
 """
 @author : Aymen Brahim Djelloul
-version : 1.1
+version : 1.2
 date : 01.09.2024
 License : MIT
 
