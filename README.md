@@ -3,7 +3,7 @@
 <h1 align="center">CoreBenchmark</h1>
 
 <div>
-  <a href="https://github.com/aymenbrahimdjelloul/CoreBenchmark/releases/download/v1.2/CoreBenchmark-1.2.exe">
+  <a href="https://github.com/aymenbrahimdjelloul/CoreBenchmark/releases/download/v1.2/CoreBenchmark-1.2.1.exe">
     <img src="https://img.shields.io/badge/Download-CoreBenchmark-brightgreen" alt="Download">
   </a>
 </div>
