@@ -1,7 +1,7 @@
 """
 @author : Aymen Brahim Djelloul
 version : 1.3
-date : 01.09.2024
+date : 14.04.2025
 License : MIT
 
 CoreBenchmark: CoreBenchmark is a streamlined and efficient tool designed to benchmark
