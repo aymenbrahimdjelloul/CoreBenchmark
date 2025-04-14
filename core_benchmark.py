@@ -1,136 +1,176 @@
 """
 @author : Aymen Brahim Djelloul
-version : 1.2
+version : 1.3
 date : 01.09.2024
 License : MIT
 
+CoreBenchmark: CoreBenchmark is a streamlined and efficient tool designed to benchmark
+ computational performance by calculating π (pi) to an accuracy of 10,000 decimal places.
+  With its straightforward approach, CoreBenchmark provides an accurate measure of your system's
+   processing power and precision capabilities. Ideal for performance testing and optimization,
+    this tool leverages advanced algorithms to deliver reliable and comprehensive benchmarks.
 
-    CoreBenchmark is a streamlined and efficient tool designed to benchmark computational
-    performance by calculating π (pi) to an accuracy of 10,000 decimal places. With its
-    straightforward approach, CoreBenchmark provides an accurate measure of your system's
-    processing power and precision capabilities. Ideal for performance testing and optimization, this tool
-    leverages advanced algorithms to deliver reliable and comprehensive benchmarks.
-
+    look : https://github.com/aymenbrahimdjelloul/CoreBenchmark
 """
 
 # IMPORTS
 import sys
-from decimal import Decimal, getcontext
+import ctypes
+import colorama
 from math import ceil
-from concurrent.futures import ProcessPoolExecutor, as_completed
-from multiprocessing import Process, ProcessError, Queue
-from time import perf_counter, sleep
 from os import system
-from cpuinfo import CPU
+from ctypes import wintypes
+from colorama import Fore, Style
+from decimal import Decimal, getcontext
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from time import perf_counter, sleep
 
-# DEFINE BASIC VARIABLES
-AUTHOR: str = "Aymen Brahim Djelloul"
-VERSION: float = 1.2
+# Initialize colorama for cross-platform colored output
+colorama.init(autoreset=True)
+
+# Constants
+VERSION: float = 1.3
+TITLE: str = f"CoreBenchmark - V {VERSION}"
 PI_PRECISION: int = 10000
-CONSOLE_CLEAR_WIN32: str = "cls"
-CONSOLE_CLEAR_LINUX: str = "clear"
-
-# Create CPU object
-cpu = CPU()
 
 
 def is_executable():
-    """ This function will detect if running on executable file or .py"""
-    return True if sys.argv[0].endswith(".exe") else False
+    """Detects if running from an executable."""
+    return sys.argv[0].endswith(".exe")
 
 
 def clear_console():
-    """ This function will clear the console for both windows and linux systems"""
-    system(CONSOLE_CLEAR_WIN32 if sys.platform == "win32" else CONSOLE_CLEAR_LINUX)
+    """Clears the console."""
+    system("cls" if sys.platform == "win32" else "clear")
 
 
-def set_title():
-    """ This function will set console title for Windows version only"""
-    system(f"title CoreBenchmark {VERSION}v")
+def set_console_title():
+    """Sets the console title."""
+    system(f"title {TITLE}" if sys.platform == "win32" else f'echo -ne "\\033]0;{TITLE}\\007"')
+
+
+class Processor:
+    """Handles CPU information retrieval."""
+
+    @staticmethod
+    def get_cpu_name():
+        """Retrieves the CPU name."""
+        if sys.platform == "win32":
+            try:
+                advapi32 = ctypes.WinDLL("advapi32", use_last_error=True)
+                reg_open_key_ex = advapi32.RegOpenKeyExW
+                reg_query_value_ex = advapi32.RegQueryValueExW
+                reg_close_key = advapi32.RegCloseKey
+
+                hkey = wintypes.HKEY()
+                result = ctypes.create_unicode_buffer(256)
+                data_size = wintypes.DWORD(256)
+
+                if (
+                    reg_open_key_ex(
+                        0x80000002,
+                        r"HARDWARE\DESCRIPTION\System\CentralProcessor\0",
+                        0,
+                        0x20019,
+                        ctypes.byref(hkey),
+                    )
+                    != 0
+                ):
+                    return "Unknown CPU"
+
+                if (
+                    reg_query_value_ex(
+                        hkey,
+                        "ProcessorNameString",
+                        None,
+                        None,
+                        ctypes.byref(result),
+                        ctypes.byref(data_size),
+                    )
+                    != 0
+                ):
+                    return "Unknown CPU"
+
+                reg_close_key(hkey)
+                return result.value.strip()
+
+            except Exception:
+                return "Unknown CPU"
+
+        elif sys.platform == "linux":
+            try:
+                with open("/proc/cpuinfo", "r") as f:
+                    for line in f:
+                        if line.startswith("model name"):
+                            return line.split(":")[1].strip()
+            except Exception:
+                return "Unknown CPU"
+
+        else:
+            return "Unsupported OS"
+
+    @staticmethod
+    def get_core_count():
+        """Retrieves the number of CPU cores."""
+        if sys.platform == "win32":
+            try:
+                kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+                sys_info = wintypes.SYSTEM_INFO()
+                kernel32.GetSystemInfo(ctypes.byref(sys_info))
+                return sys_info.dwNumberOfProcessors
+            except Exception:
+                return -1
+        elif sys.platform == "linux":
+            try:
+                import subprocess
+
+                return int(subprocess.check_output(["nproc"]).decode().strip())
+            except (subprocess.CalledProcessError, FileNotFoundError, ValueError):
+                return 0
+        else:
+            return -1
 
 
 class CoreBenchmark:
-    """
-    CoreBenchmark is the main class to perform CPU computation performance tests.
+    """Performs CPU performance benchmarks."""
 
-    Methods
-    -------
-    benchmark() -> float
-        This method runs a single-core benchmark.
+    def __init__(self):
+        self.cpu_cores = Processor.get_core_count()
 
-    benchmark_all_cores() -> float
-        This method runs a benchmark for all CPU cores in parallel.
-    """
-
-    def __init__(self) -> None:
-        # Define variables
-        self.cpu_cores: int = cpu.get_core_count()
-
-    def benchmark(self, score_result: bool = True) -> float:
-        """
-        Benchmark method that calls the calculating pi method.
-
-        Args:
-        - score_result (bool): Return benchmark score if True, otherwise return raw time.
-
-        Returns:
-        - float: The benchmark score or time result.
-        """
-        # Get the start time
-        s_time: float = perf_counter()
-        # Calculate Pi number
+    def benchmark(self, score_result=True):
+        """Single-core benchmark."""
+        start_time = perf_counter()
         self._calculate_pi(end=PI_PRECISION)
-        # Get the benchmark time
-        t_time: float = perf_counter() - s_time
+        time_taken = perf_counter() - start_time
+        return self._calculate_score(time_taken) if score_result else time_taken
 
-        return self._calculate_score(t_time) if score_result else t_time
-
-    def benchmark_all_cores(self, score_result: bool = True) -> float:
-        """
-        Calculate π in parallel using multiple cores.
-
-        Args:
-        - score_result (bool): Return benchmark score if True, otherwise return raw time.
-
-        Returns:
-        - float: Time taken to calculate π or the score result.
-        """
-        chunk_size: int = PI_PRECISION // self.cpu_cores
+    def benchmark_all_cores(self, score_result=True):
+        """Multi-core benchmark."""
+        chunk_size = PI_PRECISION // self.cpu_cores
         futures = []
         results = [Decimal(0) for _ in range(self.cpu_cores)]
 
-        s_time: float = perf_counter()
+        start_time = perf_counter()
 
         with ProcessPoolExecutor() as executor:
             for i in range(self.cpu_cores):
-                start: int = i * chunk_size
-                end: int = start + chunk_size
-                if i == self.cpu_cores - 1:  # Handle remainder in the last chunk
+                start = i * chunk_size
+                end = start + chunk_size
+                if i == self.cpu_cores - 1:
                     end = PI_PRECISION
                 futures.append(executor.submit(self._calculate_pi, end, start))
 
             for i, future in enumerate(as_completed(futures)):
                 results[i] = future.result()
+                print("work")
 
-        # Combine results (for Chudnovsky, specific combination may be needed)
-        pi: Decimal = sum(results)
-        t_time: float = perf_counter() - s_time
-
-        return self._calculate_score(t_time) if score_result else t_time
+        time_taken = perf_counter() - start_time
+        return self._calculate_score(time_taken) if score_result else time_taken
 
     @staticmethod
-    def _calculate_pi(end: int, start: int = 0) -> Decimal:
-        """
-        Calculate a chunk of π using the Chudnovsky algorithm.
-
-        Args:
-        - start (int): The starting index for the chunk.
-        - end (int): The ending index for the chunk.
-
-        Returns:
-        - Decimal: The calculated value of π for the chunk.
-        """
-        getcontext().prec = PI_PRECISION + 2  # Set precision
+    def _calculate_pi(end, start=0):
+        """Calculates π using the Chudnovsky algorithm."""
+        getcontext().prec = PI_PRECISION + 2
 
         c = Decimal(426880) * Decimal(10005).sqrt()
         k = Decimal(6 + 12 * start)
@@ -140,86 +180,56 @@ class CoreBenchmark:
         s = l
 
         for i in range(start + 1, end):
-            m *= (k ** 3 - 16 * k) / (i ** 3)
+            m *= (k**3 - 16 * k) / (i**3)
             l += Decimal(545140134)
             x *= -262537412640768000
             s += Decimal(m * l) / x
             k += 12
 
-        # Return the pi number for the chunk
         return c / s
 
     @staticmethod
-    def _calculate_score(time_taken: float, scale: float = 10000.0, offset: float = 1.0) -> float:
-        """
-        Calculate a score based on the given time duration.
-
-        Args:
-        - time_taken (float): The time taken for the benchmark in seconds.
-        - scale (float): A scaling factor to adjust the score range.
-        - offset (float): An offset to avoid division by zero.
-
-        Returns:
-        - float: The calculated score.
-        """
-        return ceil(scale / (time_taken + offset))  # Adding offset to avoid division by zero
+    def _calculate_score(time_taken, scale=10000.0, offset=1.0):
+        """Calculates a benchmark score."""
+        return ceil(scale / (time_taken + offset))
 
 
 def main():
+    """Main function."""
 
+    # Create Processor object
+    cpu = Processor()
     # Create CoreBenchmark object
     bench = CoreBenchmark()
 
-    # Print CoreBenchmark banner
-    print(
-        f"\n       CoreBenchmark {VERSION}v   |   Developed by {AUTHOR}\n\n"
-        f"     Multi-core Benchmark running on [ {cpu.get_cpu_name()} ]\n"
-        "      Please wait...\n"
-    )
+    # Set console title
+    set_console_title()
+
+    print(f"\n  {Fore.MAGENTA}   CoreBenchmark {VERSION}v   |   Developed by Aymen Brahim Djelloul\n\n"
+          f"     Multi-core Benchmark running on [ {cpu.get_cpu_name()} ]\n"
+          f"    {Fore.YELLOW}{Style.NORMAL}Please Wait..")
 
     try:
-        # Check if CoreBenchmark running on windows on executable file '.exe'
 
-        if is_executable():
-            # Set console title
-            set_title()
+        score = bench.benchmark_all_cores()
+        print(f"\n  {Fore.GREEN}{Style.BRIGHT}Benchmark score : {score} points\n\n\n\n")
 
-            # Print out Note that the results on the executable version may not be accurate
-            print(f"\n     NOTE: Results may not be accurate with the executable version.\n"
-                  f"     look : https://github.com/aymenbrahimdjelloul/CoreBenchmark")
-
-            # Run benchmark process
-            bench_score: int = bench.benchmark()
-            # Print out the results multiplied by the cores number
-            print(f"\n\n     Benchmark score : {bench_score * bench.cpu_cores} points\n")
-
-        else:
-
-            # Run the normal multicore benchmark
-            bench_score: int = bench.benchmark_all_cores()
-            print(f"\n     Benchmark score : {bench_score} points\n")
-
-    # Handle exceptions
     except Exception as e:
-        print(f"    {e}")
+        print(f" ERROR : CoreBenchmark cannot run ! \n {e}")
 
-    # Wait user input to retry or exit
-    i: int = input("\nENTER [1] For retry .. [2] For exit\n>>: ")
+    choice = input("\n\nENTER [1] For retry .. [2] For exit\n\n>>: ")
 
-    match int(i):
-        case 1:
-            # Clear console
-            clear_console()
-            # Rerun CoreCheck
-            main()
+    if choice == "1":
+        clear_console()
+        main()
 
-        case 2:
-            sys.exit()
+    elif choice == "2":
+        sys.exit()
 
-        case _:
-            print(f"    CoreBenchmark Exiting right now ..")
-            sleep(2)
-            sys.exit()
+    else:
+        print("    CoreBenchmark Exiting right now ..")
+        sleep(2)
+        sys.exit()
 
 
 if __name__ == "__main__":
